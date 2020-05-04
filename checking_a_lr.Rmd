@@ -1,0 +1,210 @@
+---
+title: "Checking the Assumptions of linear Regression"
+author: "M.Co(R)des"
+date: "12 1 2019"
+output: html_document
+---
+
+#### **Required packages**
+Packages: ('zoo'), ('gvlma')
+
+### **Topic: Checking the Assumptions of linear Regression**
+
+Linear Regression is a statistical, linear approach that assesses whether a dependent variable (criterion) can be explained by one or more independent variables (predictors).
+
+There are several assumptions for a linear regression model about the independent and dependent variables as well as their relationship. 
+While the assumptions of a linar model are never perfectly met, we must still check them and see if they are reasonable to fully interpret our data.
+
+#### **The following are the four key assumptions:**
+1. Linearity of the data: The relationship between the independent and dependent variable needs to be linear. 
+2. Normality of residuals: The residual errors are assumed to be normally distributed
+3. Homogeneity of residuals variance: The variation of observations around the regression line is constant (homoscedasticity).
+4. Indpendence: residuals are independent of each other
+
+Before we now check the assumptions we have to laod a dataset first. The dataset I use is called "LungCap" and downloadable as a *.txt-file* from: https://statslectures.com/r-scripts-datasets  
+
+To examine the data we will use the structure and summary command. 
+
+```{r}
+LCData <- read.delim(file.choose())
+attach(LCData)
+
+str(LCData)
+
+summary(LCData)
+```
+
+> We can see that the dataset consists of six variables. The variable *LungCap* is the **Lung Capacity** and in this dataset the *dependent* variable. The other five variables could have an effect on Lung Capacity and are the so called *independent* variables.  
+
+To faciliate the demonstration of our assumptions we will focus only on one independent variable. The relevant independent variable is **Age**.
+
+We will examine the assumptions for a model of the relationship between Age and Lung Capacity.  
+
+Let's inspect the data visually. We will do a bosxplot of the Lung Capacity, a scatterplot of the Lung Capacity over Age as well as a simple pearson correlation.
+
+```{r}
+boxplot(LCData$LungCap, main="Lung Capacity", sub=paste("Outlier rows: ", boxplot.stats(LCData$LungCap)$out)) 
+
+plot(LCData$Age, LCData$LungCap, col = 'blue', main = "Lung Capacity over Age", xlab = "Age in years", ylab = "Lung Capacity in Liters")
+
+cor(Age, LungCap) 
+```
+
+> We can see there is a positive fairly linear realation between Age and Lung Capacity.
+
+Now we produce the linear regression model and add it to our plot.
+
+
+```{r}
+lmod <- lm(LungCap ~ Age, LCData)
+
+print(lmod)
+
+plot(LCData$Age, LCData$LungCap, col = 'blue', main = "Lung Capacity over Age", xlab = "Age in years", ylab = "Lung Capacity in Liters")
+
+abline(lmod, col = 'red', lwd = 2)
+```
+
+With the summary command we can interpret the results of our regression model
+
+The hypothesis for a linear regression are as follows  
+- H0: The coefficent is equal to zero  
+- HA: The coefficient is not equal zero (there exists a relationship between the independent and dependent variable)
+  
+```{r}
+summary(lmod)
+```
+
+> We can see that the p-values are below 0.05 so our model is statistically significant, that means we can safely reject the null hypothesis. Age will give us a reliable guess on the Lung Capcity. We can see as well that the R-Squared has a significant p-value and can explain 67.19% of the variation in Lung Capacity
+
+
+This is great!
+
+Let us now check the assumptions.
+
+We will use R-build-in diagnostic plots.
+
+
+### **Assumption 1: Linearity**
+> Below we can now see the first plot of the predicted Y-values on the x-axis and the residuals on the y-axis.
+We can not see any pattern in the residuals, the red line is approximately horizontal at zero -> **that means Linearity is given**!
+
+```{r}
+plot(lmod, 1)
+```
+
+
+### **Assumption 2: Normality**
+> Below we can see the Quantile-Quantile plot of the ordered standardized residuals on the x-axis 
+and the ordered theoretical residuals (Expected residuals if they are normally distributed) on the y-axis
+If the residuals are normally distributed the points should fall roughly on a diagonal line -> **Normality is given**!  
+
+
+```{r}
+plot(lmod, 2)
+```
+
+
+Alternative: store the residuals and perform a Shapiro-Wilk test.
+
+
+```{r}
+res <- (residuals(lmod))
+
+shapiro.test(res)
+```
+
+> The Shapiro-Wilk Test shows a p-value above 0.05 -> we cannot reject the null hypothesis that states: **Residuals are normally distributed**. 
+
+Alternative: Check the histogram of residuals.
+
+
+```{r}
+hist(res)
+```
+
+> The histogram shows a beautiful **normal distribution**. 
+
+### **Assumption 3: Homogeneity**
+> The scale-location plot below shows if residuals are spread equally along the range of predictors.  
+If Homogeneity is given we should see a horizontal line with equally spread point -> **Homogeneity is given**!
+
+
+```{r}
+plot(lmod, 3)
+```
+
+
+### **Assumption 4: Independence**
+
+> The assumption of independent residuals can also be seen in the first plot and shows that the data is not following any pattern.  
+
+> **To be completely sure for that assumption the study design has to be examined.**
+
+```{r}
+plot(lmod, 1) 
+```
+
+
+An alternative approach comes with the durban-watson test.
+
+
+```{r}
+library(lmtest)
+
+dwtest(lmod)
+?dwtest
+```
+
+
+> Dw-values in the durban-watson test can range from 0 to 4. The desired dw-value is around 2 to have no autocorrelation. With 1.8 we have a close enough value and can say that the **residuals are independent**.  
+
+The following plots can help us to identify both assumptions as well.  
+To see all plots at once:
+
+
+```{r}
+par(mfrow = c(2,2))
+
+plot(lmod)
+```
+
+
+### **Shortcut**
+I have been told data scientists are lazy.  
+So here is actually a shortcut for all of the above using a simple R-package called "gvlma".
+
+
+```{r}
+library(gvlma)
+?gvlma
+
+gvlma(lmod)
+```
+
+#### **How to interpret this table?**
+
+**Global Stat**: *H0: The relationship between Age and Lung Capacity linear.*  
+- The p-value is above 0.05 that means we can not reject the null hypothesis  
+
+**Skewness**: *H0: The residuals are normally distributed.* (skewed positively or negatively)  
+- The p-value is above 0.05 that means we can not reject the null hypothesis
+
+**Kurtosis**: *H0: The residuals are normally distributed.* (highly peaked or very shallowly peaked)  
+- The p-value is above 0.05 that means we can not reject the null hypothesis
+
+**Link Function**: *H0: The dependent variable is truly continous.* (Does not belong to our four key assumptions and was not demonstrated above.)  
+- The p-value is above 0.05 that means we can not reject the null hypothesis
+
+**Heteroscedasticity**: *H0: The variance of the residuals are constant across the range of X.*  
+- The p-value is above 0.05 that means we can not reject the null hypothesis  
+
+The Independence assumption would have to be checked by the examination of the study design.  
+
+
+
+
+
+
+
+
